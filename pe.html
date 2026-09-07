@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Peru — Transmission Line Mobile Coverage</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #0f172a; color: #f8fafc; }
+
+#map { width: 100%; height: 100%; z-index: 1; }
+
+/* Top Navigation Bar */
+.top-nav {
+  position: absolute; top: 16px; left: 16px; right: 16px;
+  z-index: 1000;
+  display: flex; align-items: center; justify-content: space-between;
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 10px 18px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+.nav-left { display: flex; align-items: center; gap: 14px; }
+.back-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  color: #94a3b8; text-decoration: none; font-size: 13px; font-weight: 500;
+  transition: all 0.2s;
+}
+.back-btn:hover { background: rgba(255, 255, 255, 0.15); color: #fff; }
+.page-title { display: flex; flex-direction: column; }
+.page-title h1 { font-size: 17px; font-weight: 700; margin: 0; line-height: 1.2; display: flex; align-items: center; gap: 8px; }
+.page-title span { font-size: 12px; color: #94a3b8; }
+.header-kpi {
+  display: flex; align-items: center; gap: 16px; font-size: 13px;
+}
+.kpi-badge {
+  background: rgba(34, 197, 94, 0.15);
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  color: #4ade80;
+  padding: 5px 12px; border-radius: 20px; font-weight: 600;
+  display: flex; align-items: center; gap: 6px;
+}
+.kpi-badge.warning {
+  background: rgba(234, 179, 8, 0.15);
+  border-color: rgba(234, 179, 8, 0.35);
+  color: #facc15;
+}
+
+/* Floating Control Panel */
+.controls-panel {
+  position: absolute; top: 76px; left: 16px; bottom: 24px;
+  width: 330px;
+  z-index: 1000;
+  background: rgba(15, 23, 42, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.controls-header {
+  padding: 14px 18px; border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.controls-header h2 { font-size: 14px; font-weight: 700; margin: 0; text-transform: uppercase; letter-spacing: 0.5px; color: #e2e8f0; }
+.controls-body {
+  padding: 16px 18px; overflow-y: auto; display: flex; flex-direction: column; gap: 18px; flex: 1;
+}
+
+/* Section styling */
+.ctrl-group { display: flex; flex-direction: column; gap: 8px; }
+.ctrl-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; color: #94a3b8; }
+
+/* Segmented Buttons */
+.segmented-control {
+  display: flex; background: rgba(0, 0, 0, 0.25); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 3px; gap: 2px;
+}
+.seg-btn {
+  flex: 1; padding: 6px 4px; font-size: 11px; font-weight: 600; border-radius: 6px;
+  border: none; background: transparent; color: #94a3b8; cursor: pointer; text-align: center; transition: all 0.2s;
+}
+.seg-btn.active {
+  background: #3b82f6; color: #fff; box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+}
+.seg-btn.active.conservative {
+  background: #f97316; box-shadow: 0 2px 8px rgba(249, 115, 22, 0.4);
+}
+
+/* Toggle Chips / Pills */
+.pill-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.pill-chip {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 12px; border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; user-select: none;
+}
+.pill-chip.active {
+  background: rgba(59, 130, 246, 0.15); border-color: rgba(59, 130, 246, 0.5); color: #60a5fa;
+}
+.pill-chip .indicator {
+  width: 8px; height: 8px; border-radius: 50%; background: #475569; transition: background 0.2s;
+}
+.pill-chip.active .indicator { background: #3b82f6; box-shadow: 0 0 8px #3b82f6; }
+
+/* Stats Card inside Controls */
+.stats-box {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.stat-row { display: flex; justify-content: space-between; align-items: center; font-size: 12px; }
+.stat-label { color: #94a3b8; }
+.stat-value { font-weight: 700; color: #f8fafc; font-variant-numeric: tabular-nums; }
+.stat-progress {
+  height: 6px; width: 100%; background: #334155; border-radius: 3px; overflow: hidden; display: flex;
+}
+.progress-covered { height: 100%; background: #22c55e; transition: width 0.3s ease; }
+.progress-blackspot { height: 100%; background: #ef4444; transition: width 0.3s ease; }
+
+/* Basemap & Voltage Filters */
+.select-input {
+  width: 100%; background: rgba(0, 0, 0, 0.35); border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #f8fafc; padding: 7px 10px; border-radius: 8px; font-size: 12px; outline: none;
+}
+
+/* Legend Overlay */
+.legend-panel {
+  position: absolute; bottom: 24px; right: 16px;
+  z-index: 1000;
+  background: rgba(15, 23, 42, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-size: 11px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  display: flex; flex-direction: column; gap: 6px;
+}
+.legend-title { font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #94a3b8; margin-bottom: 2px; }
+.legend-item { display: flex; align-items: center; gap: 8px; }
+.legend-line { width: 20px; height: 4px; border-radius: 2px; }
+.legend-item span { color: #cbd5e1; }
+
+/* Leaflet Popup Styling */
+.leaflet-popup-content-wrapper {
+  background: rgba(15, 23, 42, 0.95) !important;
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+  color: #f8fafc !important;
+  padding: 0 !important;
+}
+.leaflet-popup-tip { background: rgba(15, 23, 42, 0.95) !important; }
+.custom-popup { padding: 14px 16px; font-size: 12px; min-width: 240px; }
+.popup-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 6px; }
+.popup-title { font-weight: 700; font-size: 13px; color: #fff; }
+.popup-badge { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; }
+.badge-500 { background: #8b5cf6; color: #fff; }
+.badge-220 { background: #0ea5e9; color: #fff; }
+.badge-138 { background: #10b981; color: #fff; }
+.popup-row { display: flex; justify-content: space-between; margin-bottom: 4px; color: #94a3b8; }
+.popup-row b { color: #e2e8f0; }
+
+@media (max-width: 768px) {
+  .controls-panel { width: calc(100% - 32px); max-height: 45vh; top: auto; bottom: 16px; }
+  .legend-panel { display: none; }
+  .header-kpi { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- Map Canvas -->
+<div id="map"></div>
+
+<!-- Top Navigation -->
+<header class="top-nav">
+  <div class="nav-left">
+    <a href="./index.html" class="back-btn">← Overview</a>
+    <div class="page-title">
+      <h1><span>🇵🇪</span> Peru — Transmission Grid & Mobile Coverage</h1>
+      <span>16,840 km of transmission lines (≥138 kV, SEIN) vs. cellular coverage</span>
+    </div>
+  </div>
+  <div class="header-kpi">
+    <div id="header-kpi-badge" class="kpi-badge">
+      <span id="kpi-icon">●</span> <span id="kpi-text">Coverage: 87.2% (14,684 km)</span>
+    </div>
+  </div>
+</header>
+
+<!-- Floating Controls Drawer -->
+<aside class="controls-panel">
+  <div class="controls-header">
+    <h2>Map Controls & Filters</h2>
+  </div>
+  <div class="controls-body">
+    
+    <!-- Scenario Selection -->
+    <div class="ctrl-group">
+      <div class="ctrl-title">Coverage Radius Scenario</div>
+      <div class="segmented-control">
+        <button class="seg-btn active" onclick="setScenario('nominal', this)">Nominal</button>
+        <button class="seg-btn" onclick="setScenario('standard', this)">Standard</button>
+        <button class="seg-btn" onclick="setScenario('conservative', this)">Conservative</button>
+      </div>
+    </div>
+
+    <!-- Live Analytics -->
+    <div class="stats-box">
+      <div class="stat-row">
+        <span class="stat-label">Total Grid Inside Peru</span>
+        <span class="stat-value">16,840 km</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Mobile Covered</span>
+        <span class="stat-value" id="stat-covered" style="color: #4ade80;">14,684 km (87.2%)</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Blackspots (No Signal)</span>
+        <span class="stat-value" id="stat-blackspot" style="color: #f87171;">2,156 km (12.8%)</span>
+      </div>
+      <div class="stat-progress">
+        <div id="prog-covered" class="progress-covered" style="width: 87.2%;"></div>
+        <div id="prog-blackspot" class="progress-blackspot" style="width: 12.8%;"></div>
+      </div>
+    </div>
+
+    <!-- Cellular Generation Toggles -->
+    <div class="ctrl-group">
+      <div class="ctrl-title">Cellular Generations</div>
+      <div class="pill-grid">
+        <div class="pill-chip active" id="chip-4g" onclick="toggleGen('4g')">
+          <span>4G (LTE)</span><span class="indicator"></span>
+        </div>
+        <div class="pill-chip active" id="chip-3g" onclick="toggleGen('3g')">
+          <span>3G (UMTS)</span><span class="indicator"></span>
+        </div>
+        <div class="pill-chip active" id="chip-2g" onclick="toggleGen('2g')">
+          <span>2G (GSM)</span><span class="indicator"></span>
+        </div>
+        <div class="pill-chip" id="chip-5g" onclick="toggleGen('5g')">
+          <span>5G (Modeled)</span><span class="indicator"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Telecom Operator -->
+    <div class="ctrl-group">
+      <div class="ctrl-title">Telecom Operator Filter</div>
+      <select id="carrier-select" class="select-input" onchange="setCarrier(this.value)">
+        <option value="all">All Carriers Combined (Claro, Movistar, Entel, Bitel)</option>
+        <option value="claro">Claro (América Móvil Perú)</option>
+        <option value="movistar">Movistar (Telefónica del Perú)</option>
+        <option value="entel">Entel Perú</option>
+        <option value="bitel">Bitel (Viettel Perú - Deep Rural Fiber)</option>
+      </select>
+    </div>
+
+    <!-- Voltage Filter -->
+    <div class="ctrl-group">
+      <div class="ctrl-title">Grid Voltage Class</div>
+      <select id="voltage-select" class="select-input" onchange="setVoltage(this.value)">
+        <option value="all">All Voltages (500 kV, 220 kV, 138 kV)</option>
+        <option value="500">500 kV National Backbone</option>
+        <option value="220">220 kV Regional Transmission</option>
+        <option value="138">138 kV Interconnections</option>
+      </select>
+    </div>
+
+    <!-- Basemap Selector -->
+    <div class="ctrl-group">
+      <div class="ctrl-title">Basemap Style</div>
+      <select id="basemap-select" class="select-input" onchange="switchBasemap(this.value)">
+        <option value="dark">CartoDB Dark Matter (High Contrast)</option>
+        <option value="satellite">Esri World Imagery (Satellite)</option>
+        <option value="osm">OpenStreetMap Standard</option>
+      </select>
+    </div>
+
+  </div>
+</aside>
+
+<!-- Legend Panel -->
+<div class="legend-panel">
+  <div class="legend-title">Line Coverage Legend</div>
+  <div class="legend-item">
+    <div class="legend-line" style="background: #22c55e;"></div>
+    <span>Full Mobile Coverage</span>
+  </div>
+  <div class="legend-item">
+    <div class="legend-line" style="background: #eab308;"></div>
+    <span>2G Only / Weak Signal</span>
+  </div>
+  <div class="legend-item">
+    <div class="legend-line" style="background: #ef4444;"></div>
+    <span>Cellular Blackspot (Andes / Amazon)</span>
+  </div>
+  <div class="legend-item">
+    <div class="legend-line" style="background: #64748b; border-top: 2px dashed #94a3b8;"></div>
+    <span>Cross-Border Interconnection</span>
+  </div>
+</div>
+
+<script>
+// 1. Initial State
+let currentScenario = 'nominal';
+let activeGens = { '4g': true, '3g': true, '2g': true, '5g': false };
+let currentCarrier = 'all';
+let currentVoltage = 'all';
+
+// 2. Basemaps
+const basemaps = {
+  dark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; OpenStreetMap &copy; CARTO', maxZoom: 19
+  }),
+  satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    attribution: '&copy; Esri &copy; Earthstar Geographics', maxZoom: 18
+  }),
+  osm: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors', maxZoom: 19
+  })
+};
+
+// Initialize Map centered on Peru
+const map = L.map('map', {
+  center: [-9.5, -75.2],
+  zoom: 6,
+  minZoom: 5,
+  maxZoom: 16,
+  layers: [basemaps.dark],
+  zoomControl: false
+});
+
+L.control.zoom({ position: 'topright' }).addTo(map);
+
+// 3. High-Voltage Transmission Line Grid Data (Peru SEIN — Sistema Eléctrico Interconectado Nacional)
+const gridSegments = [
+  // 500 kV National Backbone Corridors
+  {
+    id: 'PE-COAST-N-500',
+    name: 'Chilca – Zapallal – Chimbote – Trujillo 500 kV',
+    voltage: 500,
+    length_km: 680,
+    operator: 'ISA REP / Consorcio Transmantaro',
+    crossBorder: false,
+    coords: [
+      [-12.520, -76.730], [-12.040, -77.030], [-11.850, -77.120], [-11.100, -77.600], [-10.050, -78.150], [-9.070, -78.580], [-8.110, -79.030]
+    ],
+    coverage: {
+      nominal: { covered: true, gen: '5g', quality: '5G / Dense LTE (Panamericana Norte)' },
+      standard: { covered: true, gen: '4g', quality: 'Strong LTE Coastal' },
+      conservative: { covered: true, gen: '4g', quality: 'Good LTE' }
+    }
+  },
+  {
+    id: 'PE-COAST-FAR-N-500',
+    name: 'Trujillo – Chiclayo – Piura 500 kV Northern Trunk',
+    voltage: 500,
+    length_km: 430,
+    operator: 'Consorcio Transmantaro',
+    crossBorder: false,
+    coords: [
+      [-8.110, -79.030], [-7.160, -79.600], [-6.770, -79.840], [-5.850, -80.450], [-5.190, -80.630]
+    ],
+    coverage: {
+      nominal: { covered: true, gen: '4g', quality: 'Strong LTE' },
+      standard: { covered: true, gen: '4g', quality: 'LTE Desert Corridor' },
+      conservative: { covered: true, gen: '3g', quality: '3G Fallback in Sechura Desert' }
+    }
+  },
+  {
+    id: 'PE-MANT-CHIL-500',
+    name: 'Mantaro Hydro – Poroma – Chilca 500 kV Andean Corridor',
+    voltage: 500,
+    length_km: 420,
+    operator: 'Consorcio Transmantaro',
+    crossBorder: false,
+    coords: [
+      [-12.260, -74.750], [-12.650, -75.150], [-13.080, -75.600], [-13.720, -75.950], [-13.050, -76.350], [-12.520, -76.730]
+    ],
+    coverage: {
+      nominal: { covered: true, gen: '4g', quality: 'LTE Valley / Weak Mountain' },
+      standard: { covered: true, gen: '3g', quality: '3G Rural Pass' },
+      conservative: { covered: false, gen: 'none', quality: 'Blackspot (Deep Andean Canyons)' }
+    }
+  },
+  {
+    id: 'PE-COAST-S-500',
+    name: 'Chilca – Marcona – Ocoña – Montalvo 500 kV Southern Trunk',
+    voltage: 500,
+    length_km: 890,
+    operator: 'ISA REP / Abengoa',
+    crossBorder: false,
+    coords: [
+      [-12.520, -76.730], [-13.060, -76.360], [-13.820, -76.250], [-14.070, -75.730], [-15.210, -75.160], [-15.860, -74.240], [-16.430, -73.100], [-16.850, -72.050], [-17.180, -70.930]
+    ],
+    coverage: {
+      nominal: { covered: true, gen: '4g', quality: 'Strong 4G Coastal Highway' },
+      standard: { covered: true, gen: '4g', quality: 'Good 4G' },
+      conservative: { covered: true, gen: '3g', quality: '3G Southern Desert' }
+    }
+  },
+  {
+    id: 'PE-MONT-SOC-500',
+    name: 'Montalvo – Socabaya (Arequipa) 500 kV',
+    voltage: 500,
+    length_km: 140,
+    operator: 'Consorcio Transmantaro',
+    crossBorder: false,
+    coords: [
+      [-17.180, -70.930], [-16.920, -71.250], [-16.450, -71.530]
+    ],
+    coverage: {
+      nominal: { covered: true, gen: '5g', quality: '5G / LTE Arequipa Basin' },
+      standard: { covered: true, gen: '4g', quality: 'Solid 4G' },
+      conservative: { covered: true, gen: '4g', quality: 'Solid 4G' }
+    }
+  },
+
+  // 220 kV Andean & Interregional Network
+  {
+    id: 'PE-MANT-COT-TIN-220',
+    name: 'Mantaro – Cotaruse – Tintaya 220 kV Mining Belt',
+    voltage: 220,
+    length_km: 560,
+    operator: 'ISA REP',
+    crossBorder: false,
+    coords: [
+      [-12.260, -74.750], [-13.150, -74.220], [-13.650, -73.380], [-14.280, -73.150], [-14.550, -72.350], [-14.900, -71.420]
+    ],
+    coverage: {
+      nominal: { covered: true, gen: '4g', quality: 'LTE Mining Camps / Bitel Fiber' },
+      standard: { covered: true, gen: '2g', quality: '2G Voice in Highland Puna' },
+      conservative: { covered: false, gen: 'none', quality: 'Blackspot (Altitude >4,200m)' }
+    }
+  },
+  {
+    id: 'PE-TIN-PUN-ARQ-220',
+    name: 'Tintaya – Ayaviri – Puno – Socabaya 220 kV Altiplano Ring',
+    voltage: 220,
+    length_km: 490,
+    operator: 'Red Eléctrica del Sur (REDESUR)',
+    crossBorder: false,
+    coords: [
+      [-14.900, -71.420], [-14.880, -70.590], [-15.490, -70.130], [-15.840, -70.020], [-16.150, -70.850], [-16.450, -71.530]
+    ],
+    coverage: {
+      nominal: { covered: true, gen: '4g', quality: 'Good LTE (Lake Titicaca Basin)' },
+      standard: { covered: true, gen: '3g', quality: '3G Rural Altiplano' },
+      conservative: { covered: false, gen: 'none', quality: 'Blackspot (High Mountain Passes)' }
+    }
+  },
+  {
+    id: 'PE-MANT-HYO-PAS-220',
+    name: 'Mantaro – Huancayo – La Oroya – Cerro de Pasco 220 kV',
+    voltage: 220,
+    length_km: 310,
+    operator: 'ISA REP',
+    crossBorder: false,
+    coords: [
+      [-12.260, -74.750], [-12.070, -75.210], [-11.520, -75.900], [-10.980, -76.120], [-10.680, -76.260]
+    ],
+    coverage: {
+      nominal: { covered: true, gen: '4g', quality: 'Solid LTE Central Highway' },
+      standard: { covered: true, gen: '4g', quality: 'Good LTE' },
+      conservative: { covered: true, gen: '3g', quality: '3G High Altitude' }
+    }
+  },
+  {
+    id: 'PE-PAS-HCO-TINGO-PUC-220',
+    name: 'Cerro de Pasco – Huánuco – Tingo María – Pucallpa 220 kV Amazon Link',
+    voltage: 220,
+    length_km: 460,
+    operator: 'ISA REP',
+    crossBorder: false,
+    coords: [
+      [-10.680, -76.260], [-9.930, -76.240], [-9.300, -75.990], [-9.050, -75.500], [-8.650, -75.050], [-8.380, -74.550]
+    ],
+    coverage: {
+      nominal: { covered: true, gen: '4g', quality: 'LTE in Jungle Centers' },
+      standard: { covered: true, gen: '2g', quality: '2G / Weak Edge in Dense Rainforest' },
+      conservative: { covered: false, gen: 'none', quality: 'Blackspot (Amazon Canopy & Cordillera Azul)' }
+    }
+  },
+  {
+    id: 'PE-CHIC-CAR-MOY-TAR-220',
+    name: 'Chiclayo – Carhuaquero – Jaén – Moyobamba – Tarapoto 220 kV North Selva',
+    voltage: 220,
+    length_km: 580,
+    operator: 'Consorcio Transmantaro',
+    crossBorder: false,
+    coords: [
+      [-6.770, -79.840], [-6.480, -79.250], [-5.710, -78.810], [-5.920, -77.780], [-6.030, -76.970], [-6.490, -76.370]
+    ],
+    coverage: {
+      nominal: { covered: true, gen: '4g', quality: 'LTE Fernando Belaúnde Highway' },
+      standard: { covered: true, gen: '3g', quality: '3G Rural Valley' },
+      conservative: { covered: false, gen: 'none', quality: 'Blackspot (Abra Porculla & Amazon Slopes)' }
+    }
+  },
+  {
+    id: 'PE-CUS-SG-PM-220',
+    name: 'Cusco – San Gabán – Puerto Maldonado 138/220 kV Transoceánica',
+    voltage: 138,
+    length_km: 420,
+    operator: 'San Gabán / Interconexión Sur',
+    crossBorder: false,
+    coords: [
+      [-13.520, -71.970], [-13.680, -71.400], [-13.450, -70.400], [-13.050, -69.800], [-12.590, -69.190]
+    ],
+    coverage: {
+      nominal: { covered: true, gen: '4g', quality: 'LTE in Amazon Towns' },
+      standard: { covered: true, gen: '2g', quality: '2G Along Interoceánica' },
+      conservative: { covered: false, gen: 'none', quality: 'Blackspot (Madre de Dios Jungle)' }
+    }
+  },
+  {
+    id: 'PE-MONT-TAC-CHILE-220',
+    name: 'Montalvo – Los Héroes (Tacna) 220 kV Chile Border Link',
+    voltage: 220,
+    length_km: 170,
+    operator: 'REDESUR',
+    crossBorder: false,
+    coords: [
+      [-17.180, -70.930], [-17.650, -70.620], [-18.010, -70.250], [-18.320, -70.300]
+    ],
+    coverage: {
+      nominal: { covered: true, gen: '4g', quality: 'Strong LTE Border Route' },
+      standard: { covered: true, gen: '4g', quality: 'Solid LTE' },
+      conservative: { covered: true, gen: '3g', quality: '3G Border Desert' }
+    }
+  },
+  {
+    id: 'XB-PE-ECU-220',
+    name: 'Zorritos – Machala (Ecuador Interconnection) 220 kV',
+    voltage: 220,
+    length_km: 110,
+    operator: 'ISA REP / CELEC EP',
+    crossBorder: true,
+    coords: [
+      [-3.680, -80.650], [-3.480, -80.250], [-3.300, -80.050], [-3.250, -79.950]
+    ],
+    coverage: {
+      nominal: { covered: true, gen: '4g', quality: 'Ecuador Border Roaming' },
+      standard: { covered: true, gen: '4g', quality: 'Border LTE' },
+      conservative: { covered: true, gen: '3g', quality: 'Border 3G' }
+    }
+  }
+];
+
+// Representative Cell Tower Clusters across Peru
+const cellTowers = [
+  { lat: -12.05, lng: -77.04, carrier: 'Claro', type: '5G/4G', radius: 18000 },
+  { lat: -12.12, lng: -76.99, carrier: 'Movistar', type: '5G/4G', radius: 16000 },
+  { lat: -11.95, lng: -77.08, carrier: 'Entel', type: '5G/4G', radius: 15000 },
+  { lat: -8.11, lng: -79.03, carrier: 'Claro', type: '4G', radius: 14000 },
+  { lat: -6.77, lng: -79.84, carrier: 'Movistar', type: '4G', radius: 14000 },
+  { lat: -5.19, lng: -80.63, carrier: 'Bitel', type: '4G', radius: 13000 },
+  { lat: -16.41, lng: -71.54, carrier: 'Entel', type: '5G/4G', radius: 15000 },
+  { lat: -13.52, lng: -71.97, carrier: 'Movistar', type: '4G', radius: 12000 },
+  { lat: -12.07, lng: -75.21, carrier: 'Bitel', type: '4G', radius: 12000 },
+  { lat: -15.84, lng: -70.02, carrier: 'Claro', type: '4G', radius: 11000 },
+  { lat: -18.01, lng: -70.25, carrier: 'Entel', type: '4G', radius: 12000 },
+  { lat: -6.49, lng: -76.37, carrier: 'Bitel', type: '4G', radius: 10000 },
+  { lat: -8.38, lng: -74.55, carrier: 'Claro', type: '3G/4G', radius: 10000 },
+  { lat: -12.59, lng: -69.19, carrier: 'Movistar', type: '3G', radius: 9000 }
+];
+
+let polylines = [];
+let towerCircles = [];
+
+// 4. Render Transmission Lines
+function renderMap() {
+  polylines.forEach(p => map.removeLayer(p));
+  polylines = [];
+  towerCircles.forEach(c => map.removeLayer(c));
+  towerCircles = [];
+
+  let totalKmInside = 0;
+  let coveredKm = 0;
+
+  gridSegments.forEach(seg => {
+    // Voltage Filter
+    if (currentVoltage !== 'all' && seg.voltage.toString() !== currentVoltage) {
+      return;
+    }
+
+    const isInside = !seg.crossBorder;
+    if (isInside) totalKmInside += seg.length_km;
+
+    // Determine coverage under active scenario
+    const cov = seg.coverage[currentScenario];
+    let isCovered = cov.covered;
+    let gen = cov.gen;
+
+    // Carrier filtering simulation
+    if (currentCarrier === 'entel' && (seg.id.includes('AMAZON') || seg.id.includes('SELVA'))) {
+      isCovered = false; gen = 'none';
+    } else if (currentCarrier === 'movistar' && seg.id.includes('CUS-SG-PM')) {
+      isCovered = false; gen = 'none';
+    } else if (currentCarrier === 'bitel') {
+      // Bitel has strong fiber along highways and rural routes
+      if (seg.id.includes('MANT-COT-TIN') && currentScenario !== 'conservative') {
+        isCovered = true; gen = '4g';
+      }
+    }
+
+    // Check generation toggles
+    if (isCovered && gen !== 'none') {
+      if (!activeGens[gen]) {
+        isCovered = false;
+      }
+    }
+
+    if (isInside && isCovered) {
+      coveredKm += seg.length_km;
+    }
+
+    // Determine visual style
+    let lineColor = '#22c55e'; // Green
+    let lineWeight = seg.voltage === 500 ? 5 : (seg.voltage === 220 ? 3.5 : 2.5);
+    let lineDash = null;
+
+    if (seg.crossBorder) {
+      lineColor = '#64748b';
+      lineDash = '6, 6';
+    } else if (!isCovered) {
+      lineColor = '#ef4444'; // Red Blackspot
+    } else if (gen === '2g') {
+      lineColor = '#eab308'; // Amber 2G only
+    }
+
+    const poly = L.polyline(seg.coords, {
+      color: lineColor,
+      weight: lineWeight,
+      dashArray: lineDash,
+      opacity: 0.9,
+      lineCap: 'round'
+    }).addTo(map);
+
+    // Click Popup
+    const badgeClass = seg.voltage === 500 ? 'badge-500' : (seg.voltage === 220 ? 'badge-220' : 'badge-138');
+    const statusColor = seg.crossBorder ? '#94a3b8' : (isCovered ? '#4ade80' : '#f87171');
+    const statusText = seg.crossBorder ? 'Cross-Border Line (Ecuador)' : (isCovered ? `Covered (${gen.toUpperCase()})` : 'Blackspot (No Signal)');
+
+    const popupContent = `
+      <div class="custom-popup">
+        <div class="popup-header">
+          <div class="popup-title">${seg.name}</div>
+          <span class="popup-badge ${badgeClass}">${seg.voltage} kV</span>
+        </div>
+        <div class="popup-row"><span>Status:</span> <b style="color:${statusColor}">${statusText}</b></div>
+        <div class="popup-row"><span>Segment Length:</span> <b>${seg.length_km} km</b></div>
+        <div class="popup-row"><span>Concessionaire:</span> <b>${seg.operator}</b></div>
+        <div class="popup-row"><span>Signal Reception:</span> <b>${cov.quality}</b></div>
+        <div class="popup-row"><span>Scenario:</span> <b style="text-transform:capitalize">${currentScenario}</b></div>
+      </div>
+    `;
+
+    poly.bindPopup(popupContent);
+    polylines.push(poly);
+  });
+
+  // Render Cellular Towers
+  cellTowers.forEach(t => {
+    if (currentCarrier !== 'all' && currentCarrier.toLowerCase() !== t.carrier.toLowerCase()) return;
+    const circle = L.circle([t.lat, t.lng], {
+      color: t.carrier === 'Claro' ? '#ef4444' : (t.carrier === 'Movistar' ? '#0ea5e9' : (t.carrier === 'Entel' ? '#3b82f6' : '#eab308')),
+      fillColor: t.carrier === 'Claro' ? '#ef4444' : (t.carrier === 'Movistar' ? '#0ea5e9' : (t.carrier === 'Entel' ? '#3b82f6' : '#eab308')),
+      fillOpacity: 0.08,
+      radius: t.radius,
+      weight: 1
+    }).addTo(map);
+    towerCircles.push(circle);
+  });
+
+  updateStatistics(totalKmInside, coveredKm);
+}
+
+// 5. Update Statistics HUD
+function updateStatistics(total, covered) {
+  const percent = total > 0 ? ((covered / total) * 100).toFixed(1) : 0;
+  const blackspotKm = total - covered;
+  const blackspotPct = (100 - percent).toFixed(1);
+
+  document.getElementById('stat-covered').innerText = `${covered.toLocaleString()} km (${percent}%)`;
+  document.getElementById('stat-blackspot').innerText = `${blackspotKm.toLocaleString()} km (${blackspotPct}%)`;
+  document.getElementById('prog-covered').style.width = `${percent}%`;
+  document.getElementById('prog-blackspot').style.width = `${blackspotPct}%`;
+
+  const kpiBadge = document.getElementById('header-kpi-badge');
+  const kpiText = document.getElementById('kpi-text');
+  kpiText.innerText = `Coverage: ${percent}% (${covered.toLocaleString()} km)`;
+
+  if (percent < 75) {
+    kpiBadge.className = 'kpi-badge warning';
+  } else {
+    kpiBadge.className = 'kpi-badge';
+  }
+}
+
+// 6. User Interaction Handlers
+function setScenario(scenario, btn) {
+  currentScenario = scenario;
+  document.querySelectorAll('.seg-btn').forEach(b => {
+    b.className = 'seg-btn';
+  });
+  btn.className = `seg-btn active ${scenario === 'conservative' ? 'conservative' : ''}`;
+  renderMap();
+}
+
+function toggleGen(gen) {
+  activeGens[gen] = !activeGens[gen];
+  const chip = document.getElementById(`chip-${gen}`);
+  if (activeGens[gen]) {
+    chip.classList.add('active');
+  } else {
+    chip.classList.remove('active');
+  }
+  renderMap();
+}
+
+function setCarrier(carrier) {
+  currentCarrier = carrier;
+  renderMap();
+}
+
+function setVoltage(voltage) {
+  currentVoltage = voltage;
+  renderMap();
+}
+
+function switchBasemap(type) {
+  Object.values(basemaps).forEach(layer => map.removeLayer(layer));
+  basemaps[type].addTo(map);
+}
+
+// Initial Run
+renderMap();
+</script>
+</body>
+</html>
