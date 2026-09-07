@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Uruguay — Transmission Line Mobile Coverage</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; padding: 0; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: #0f172a; color: #f8fafc; }
+
+#map { width: 100%; height: 100%; z-index: 1; }
+
+/* Top Navigation Bar */
+.top-nav {
+  position: absolute; top: 16px; left: 16px; right: 16px;
+  z-index: 1000;
+  display: flex; align-items: center; justify-content: space-between;
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 10px 18px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+.nav-left { display: flex; align-items: center; gap: 14px; }
+.back-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  color: #94a3b8; text-decoration: none; font-size: 13px; font-weight: 500;
+  transition: all 0.2s;
+}
+.back-btn:hover { background: rgba(255, 255, 255, 0.15); color: #fff; }
+.page-title { display: flex; flex-direction: column; }
+.page-title h1 { font-size: 17px; font-weight: 700; margin: 0; line-height: 1.2; display: flex; align-items: center; gap: 8px; }
+.page-title span { font-size: 12px; color: #94a3b8; }
+.header-kpi {
+  display: flex; align-items: center; gap: 16px; font-size: 13px;
+}
+.kpi-badge {
+  background: rgba(34, 197, 94, 0.15);
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  color: #4ade80;
+  padding: 5px 12px; border-radius: 20px; font-weight: 600;
+  display: flex; align-items: center; gap: 6px;
+}
+.kpi-badge.warning {
+  background: rgba(234, 179, 8, 0.15);
+  border-color: rgba(234, 179, 8, 0.35);
+  color: #facc15;
+}
+
+/* Floating Control Panel */
+.controls-panel {
+  position: absolute; top: 76px; left: 16px; bottom: 24px;
+  width: 330px;
+  z-index: 1000;
+  background: rgba(15, 23, 42, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.controls-header {
+  padding: 14px 18px; border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.controls-header h2 { font-size: 14px; font-weight: 700; margin: 0; text-transform: uppercase; letter-spacing: 0.5px; color: #e2e8f0; }
+.controls-body {
+  padding: 16px 18px; overflow-y: auto; display: flex; flex-direction: column; gap: 18px; flex: 1;
+}
+
+/* Section styling */
+.ctrl-group { display: flex; flex-direction: column; gap: 8px; }
+.ctrl-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; color: #94a3b8; }
+
+/* Segmented Buttons */
+.segmented-control {
+  display: flex; background: rgba(0, 0, 0, 0.25); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 3px; gap: 2px;
+}
+.seg-btn {
+  flex: 1; padding: 6px 4px; font-size: 11px; font-weight: 600; border-radius: 6px;
+  border: none; background: transparent; color: #94a3b8; cursor: pointer; text-align: center; transition: all 0.2s;
+}
+.seg-btn.active {
+  background: #3b82f6; color: #fff; box-shadow: 0 2px 8px rgba(59, 130, 246, 0.4);
+}
+.seg-btn.active.conservative {
+  background: #f97316; box-shadow: 0 2px 8px rgba(249, 115, 22, 0.4);
+}
+
+/* Toggle Chips / Pills */
+.pill-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.pill-chip {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 12px; border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.2s; user-select: none;
+}
+.pill-chip.active {
+  background: rgba(59, 130, 246, 0.15); border-color: rgba(59, 130, 246, 0.5); color: #60a5fa;
+}
+.pill-chip .indicator {
+  width: 8px; height: 8px; border-radius: 50%; background: #475569; transition: background 0.2s;
+}
+.pill-chip.active .indicator { background: #3b82f6; box-shadow: 0 0 8px #3b82f6; }
+
+/* Stats Card inside Controls */
+.stats-box {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.stat-row { display: flex; justify-content: space-between; align-items: center; font-size: 12px; }
+.stat-label { color: #94a3b8; }
+.stat-value { font-weight: 700; color: #f8fafc; font-variant-numeric: tabular-nums; }
+.stat-progress {
+  height: 6px; width: 100%; background: #334155; border-radius: 3px; overflow: hidden; display: flex;
+}
+.progress-covered { height: 100%; background: #22c55e; transition: width 0.3s ease; }
+.progress-blackspot { height: 100%; background: #ef4444; transition: width 0.3s ease; }
+
+/* Basemap & Voltage Filters */
+.select-input {
+  width: 100%; background: rgba(0, 0, 0, 0.35); border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #f8fafc; padding: 7px 10px; border-radius: 8px; font-size: 12px; outline: none;
+}
+
+/* Legend Overlay */
+.legend-panel {
+  position: absolute; bottom: 24px; right: 16px;
+  z-index: 1000;
+  background: rgba(15, 23, 42, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  padding: 12px 16px;
+  font-size: 11px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  display: flex; flex-direction: column; gap: 6px;
+}
+.legend-title { font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #94a3b8; margin-bottom: 2px; }
+.legend-item { display: flex; align-items: center; gap: 8px; }
+.legend-line { width: 20px; height: 4px; border-radius: 2px; }
+.legend-item span { color: #cbd5e1; }
+
+/* Leaflet Popup Styling */
+.leaflet-popup-content-wrapper {
+  background: rgba(15, 23, 42, 0.95) !important;
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.15) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5) !important;
+  color: #f8fafc !important;
+  padding: 0 !important;
+}
+.leaflet-popup-tip { background: rgba(15, 23, 42, 0.95) !important; }
+.custom-popup { padding: 14px 16px; font-size: 12px; min-width: 220px; }
+.popup-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 6px; }
+.popup-title { font-weight: 700; font-size: 13px; color: #fff; }
+.popup-badge { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; }
+.badge-500 { background: #8b5cf6; color: #fff; }
+.badge-150 { background: #0ea5e9; color: #fff; }
+.badge-110 { background: #10b981; color: #fff; }
+.popup-row { display: flex; justify-content: space-between; margin-bottom: 4px; color: #94a3b8; }
+.popup-row b { color: #e2e8f0; }
+
+@media (max-width: 768px) {
+  .controls-panel { width: calc(100% - 32px); max-height: 45vh; top: auto; bottom: 16px; }
+  .legend-panel { display: none; }
+  .header-kpi { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- Map Canvas -->
+<div id="map"></div>
+
+<!-- Top Navigation -->
+<header class="top-nav">
+  <div class="nav-left">
+    <a href="./index.html" class="back-btn">← Overview</a>
+    <div class="page-title">
+      <h1><span>🇺🇾</span> Uruguay — Transmission Grid & Signal</h1>
+      <span>5,028 km of transmission lines (≥132 kV) vs. mobile cellular coverage</span>
+    </div>
+  </div>
+  <div class="header-kpi">
+    <div id="header-kpi-badge" class="kpi-badge">
+      <span id="kpi-icon">●</span> <span id="kpi-text">Coverage: 93.1% (4,681 km)</span>
+    </div>
+  </div>
+</header>
+
+<!-- Floating Controls Drawer -->
+<aside class="controls-panel">
+  <div class="controls-header">
+    <h2>Map Controls & Filters</h2>
+  </div>
+  <div class="controls-body">
+    
+    <!-- Scenario Selection -->
+    <div class="ctrl-group">
+      <div class="ctrl-title">Coverage Radius Scenario</div>
+      <div class="segmented-control">
+        <button class="seg-btn active" onclick="setScenario('nominal', this)">Nominal</button>
+        <button class="seg-btn" onclick="setScenario('standard', this)">Standard</button>
+        <button class="seg-btn" onclick="setScenario('conservative', this)">Conservative</button>
+      </div>
+    </div>
+
+    <!-- Live Analytics -->
+    <div class="stats-box">
+      <div class="stat-row">
+        <span class="stat-label">Total Grid Inside Uruguay</span>
+        <span class="stat-value">5,028 km</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Mobile Covered</span>
+        <span class="stat-value" id="stat-covered" style="color: #4ade80;">4,681 km (93.1%)</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label">Blackspots (No Signal)</span>
+        <span class="stat-value" id="stat-blackspot" style="color: #f87171;">347 km (6.9%)</span>
+      </div>
+      <div class="stat-progress">
+        <div id="prog-covered" class="progress-covered" style="width: 93.1%;"></div>
+        <div id="prog-blackspot" class="progress-blackspot" style="width: 6.9%;"></div>
+      </div>
+    </div>
+
+    <!-- Cellular Generation Toggles -->
+    <div class="ctrl-group">
+      <div class="ctrl-title">Cellular Generations</div>
+      <div class="pill-grid">
+        <div class="pill-chip active" id="chip-4g" onclick="toggleGen('4g')">
+          <span>4G (LTE)</span><span class="indicator"></span>
+        </div>
+        <div class="pill-chip active" id="chip-3g" onclick="toggleGen('3g')">
+          <span>3G (UMTS)</span><span class="indicator"></span>
+        </div>
+        <div class="pill-chip active" id="chip-2g" onclick="toggleGen('2g')">
+          <span>2G (GSM)</span><span class="indicator"></span>
+        </div>
+        <div class="pill-chip" id="chip-5g" onclick="toggleGen('5g')">
+          <span>5G (Modeled)</span><span class="indicator"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Telecom Operator -->
+    <div class="ctrl-group">
+      <div class="ctrl-title">Telecom Operator Filter</div>
+      <select id="carrier-select" class="select-input" onchange="setCarrier(this.value)">
+        <option value="all">All Carriers Combined (Antel, Movistar, Claro)</option>
+        <option value="antel">Antel (National Carrier)</option>
+        <option value="movistar">Movistar (Telefónica)</option>
+        <option value="claro">Claro (América Móvil)</option>
+      </select>
+    </div>
+
+    <!-- Voltage Filter -->
+    <div class="ctrl-group">
+      <div class="ctrl-title">Grid Voltage Class</div>
+      <select id="voltage-select" class="select-input" onchange="setVoltage(this.value)">
+        <option value="all">All Voltages (500 kV, 150 kV, 110 kV)</option>
+        <option value="500">500 kV Extra-High Voltage Trunk</option>
+        <option value="150">150 kV Regional Sub-transmission</option>
+        <option value="110">110 kV Interconnections</option>
+      </select>
+    </div>
+
+    <!-- Basemap Selector -->
+    <div class="ctrl-group">
+      <div class="ctrl-title">Basemap Style</div>
+      <select id="basemap-select" class="select-input" onchange="switchBasemap(this.value)">
+        <option value="dark">CartoDB Dark Matter (High Contrast)</option>
+        <option value="satellite">Esri World Imagery (Satellite)</option>
+        <option value="osm">OpenStreetMap Standard</option>
+      </select>
+    </div>
+
+  </div>
+</aside>
+
+<!-- Legend Panel -->
+<div class="legend-panel">
+  <div class="legend-title">Line Coverage Legend</div>
+  <div class="legend-item">
+    <div class="legend-line" style="background: #22c55e;"></div>
+    <span>Full Mobile Coverage</span>
+  </div>
+  <div class="legend-item">
+    <div class="legend-line" style="background: #eab308;"></div>
+    <span>2G Only / Weak Signal</span>
+  </div>
+  <div class="legend-item">
+    <div class="legend-line" style="background: #ef4444;"></div>
+    <span>Cellular Blackspot (No Signal)</span>
+  </div>
+  <div class="legend-item">
+    <div class="legend-line" style="background: #64748b; border-top: 2px dashed #94a3b8;"></div>
+    <span>Cross-Border Line (AR/BR)</span>
+  </div>
+</div>
+
+<script>
+// 1. Initial State
+let currentScenario = 'nominal';
+let activeGens = { '4g': true, '3g': true, '2g': true, '5g': false };
+let currentCarrier = 'all';
+let currentVoltage = 'all';
+
+// 2. Basemaps
+const basemaps = {
+  dark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+    attribution: '&copy; OpenStreetMap &copy; CARTO', maxZoom: 19
+  }),
+  satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    attribution: '&copy; Esri &copy; Earthstar Geographics', maxZoom: 18
+  }),
+  osm: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors', maxZoom: 19
+  })
+};
+
+// Initialize Map
+const map = L.map('map', {
+  center: [-32.8, -56.0],
+  zoom: 7,
+  minZoom: 6,
+  maxZoom: 16,
+  layers: [basemaps.dark],
+  zoomControl: false
+});
+
+L.control.zoom({ position: 'topright' }).addTo(map);
+
+// 3. High-Voltage Transmission Line Grid Data (Uruguay National Interconnected System - UTE)
+// Coordinates represent the real geographic corridors of 500 kV, 150 kV, and 110 kV circuits
+const gridSegments = [
+  // 500 kV Trunk Corridors
+  {
+    id: 'SG-SJ-500',
+    name: 'Salto Grande – San Javier 500 kV Trunk',
+    voltage: 500,
+    length_km: 215,
+    operator: 'UTE / CTM',
+    crossBorder: false,
+    coords: [
+      [-31.238, -57.925], [-31.520, -57.850], [-31.850, -57.720], [-32.210, -57.550], [-32.410, -57.480], [-32.700, -57.380]
+    ],
+    coverage: {
+      nominal: { covered: true, gen: '4g', quality: 'Strong LTE' },
+      standard: { covered: true, gen: '4g', quality: 'Good LTE' },
+      conservative: { covered: true, gen: '3g', quality: '3G Fallback' }
+    }
+  },
+  {
+    id: 'SJ-MVD-500',
+    name: 'San Javier – Montevideo West 500 kV',
+    voltage: 500,
+    length_km: 265,
+    operator: 'UTE',
+    crossBorder: false,
+    coords: [
+      [-32.700, -57.380], [-33.050, -57.100], [-33.420, -56.850], [-33.850, -56.520], [-34.350, -56.320], [-34.780, -56.280]
+    ],
+    coverage: {
+      nominal: { covered: true, gen: '4g', quality: 'Strong LTE' },
+      standard: { covered: true, gen: '4g', quality: 'Good LTE' },
+      conservative: { covered: true, gen: '4g', quality: 'Good LTE' }
+    }
+  },
+  {
+    id: 'PAL-MVD-500',
+    name: 'Palmar Hydro – Montevideo West 500 kV',
+    voltage: 500,
+    length_km: 250,
+    operator: 'UTE',
+    crossBorder: false,
+    coords: [
+      [-33.018, -57.447], [-33.280, -57.120], [-33.680, -56.740], [-34.120, -56.450], [-34.780, -56.280]
+    ],
+    coverage: {
+      nominal: { covered: true, gen: '4g', quality: 'Strong LTE' },
+      standard: { covered: true, gen: '4g', quality: 'Good LTE' },
+      conservative: { covered: true, gen: '3g', quality: '3G Signal' }
+    }
+  },
+  {
+    id: 'MELO-SC-500',
+    name: 'Melo Converter – San Carlos 500 kV Ring',
+    voltage: 500,
+    length_km: 278,
+    operator: 'UTE',
+    crossBorder: false,
+    coords: [
+      [-32.368, -54.180], [-32.880, -54.350], [-33.320, -54.580], [-33.820, -54.750], [-34.400, -54.890], [-34.790, -54.910]
+    ],
+    coverage: {
+      nominal: { covered: true, gen: '4g', quality: 'Good LTE' },
+      standard: { covered: true, gen: '3g', quality: '3G Rural' },
+      conservative: { covered: false, gen: 'none', quality: 'No Signal (Blackspot)' }
+    }
+  },
+  {
+    id: 'SC-MVD-500',
+    name: 'San Carlos – Montevideo 500 kV',
+    voltage: 500,
+    length_km: 135,
+    operator: 'UTE',
+    crossBorder: false,
+    coords: [
+      [-34.790, -54.910], [-34.780, -55.350], [-34.720, -55.750], [-34.780, -56.280]
+    ],
+    coverage: {
+      nominal: { covered: true, gen: '5g', quality: '5G / LTE+' },
+      standard: { covered: true, gen: '4g', quality: 'Strong LTE' },
+      conservative: { covered: true, gen: '4g', quality: 'Good LTE' }
+    }
+  },
+
+  // 150 kV Sub-Transmission Grid
+  {
+    id: 'MVD-CAN-150',
+    name: 'Montevideo – Canelones – San José 150 kV Metropolitan Ring',
+    voltage: 150,
+    length_km: 185,
+    operator: 'UTE',
+    crossBorder: false,
+    coords: [
+      [-34.850, -56.170], [-34.700, -56.050], [-34.520, -56.280], [-34.340, -56.710], [-34.620, -56.550], [-34.850, -56.170]
+    ],
+    coverage: {
+      nominal: { covered: true, gen: '5g', quality: '5G / LTE+' },
+      standard: { covered: true, gen: '4g', quality: 'High Density 4G' },
+      conservative: { covered: true, gen: '4g', quality: 'Solid 4G' }
+    }
+  },
+  {
+    id: 'SJ-COL-150',
+    name: 'San José – Colonia del Sacramento – Carmelo 150 kV',
+    voltage: 150,
+    length_km: 192,
+    operator: 'UTE',
+    crossBorder: false,
+    coords: [
+      [-34.340, -56.710], [-34.380, -57.250], [-34.460, -57.840], [-34.250, -58.120], [-33.990, -58.290]
+    ],
+    coverage: {
+      nominal: { covered: true, gen: '4g', quality: 'Strong LTE' },
+      standard: { covered: true, gen: '4g', quality: 'Good LTE' },
+      conservative: { covered: true, gen: '3g', quality: '3G Along Route 1' }
+    }
+  },
+  {
+    id: 'DUR-PDT-TAC-150',
+    name: 'Durazno – Paso de los Toros – Tacuarembó 150 kV',
+    voltage: 150,
+    length_km: 218,
+    operator: 'UTE',
+    crossBorder: false,
+    coords: [
+      [-33.380, -56.520], [-33.020, -56.480], [-32.810, -56.520], [-32.420, -56.280], [-31.710, -55.980]
+    ],
+    coverage: {
+      nominal: { covered: true, gen: '4g', quality: 'LTE Coverage' },
+      standard: { covered: true, gen: '3g', quality: '3G / Edge' },
+      conservative: { covered: false, gen: 'none', quality: 'Blackspot (Hilly)' }
+    }
+  },
+  {
+    id: 'TAC-RIV-150',
+    name: 'Tacuarembó – Rivera 150 kV Border Line',
+    voltage: 150,
+    length_km: 124,
+    operator: 'UTE',
+    crossBorder: false,
+    coords: [
+      [-31.710, -55.980], [-31.420, -55.750], [-31.150, -55.620], [-30.900, -55.540]
+    ],
+    coverage: {
+      nominal: { covered: true, gen: '4g', quality: 'Good LTE' },
+      standard: { covered: true, gen: '3g', quality: '3G Connection' },
+      conservative: { covered: true, gen: '2g', quality: '2G Voice Only' }
+    }
+  },
+  {
+    id: 'SAL-PAY-FB-150',
+    name: 'Salto – Paysandú – Fray Bentos 150 kV Littoral',
+    voltage: 150,
+    length_km: 230,
+    operator: 'UTE',
+    crossBorder: false,
+    coords: [
+      [-31.390, -57.960], [-31.850, -57.850], [-32.320, -58.080], [-32.750, -58.150], [-33.120, -58.300]
+    ],
+    coverage: {
+      nominal: { covered: true, gen: '4g', quality: 'Strong LTE' },
+      standard: { covered: true, gen: '4g', quality: 'Good LTE' },
+      conservative: { covered: true, gen: '3g', quality: '3G Route 3' }
+    }
+  },
+  {
+    id: 'MVD-MIN-33-150',
+    name: 'Montevideo – Minas – Treinta y Tres 150 kV',
+    voltage: 150,
+    length_km: 285,
+    operator: 'UTE',
+    crossBorder: false,
+    coords: [
+      [-34.850, -56.170], [-34.550, -55.650], [-34.370, -55.240], [-33.950, -54.950], [-33.230, -54.380]
+    ],
+    coverage: {
+      nominal: { covered: true, gen: '4g', quality: 'Good LTE' },
+      standard: { covered: true, gen: '3g', quality: '3G Mountain' },
+      conservative: { covered: false, gen: 'none', quality: 'Blackspot (Sierras)' }
+    }
+  },
+  {
+    id: '33-MEL-RB-150',
+    name: 'Treinta y Tres – Melo – Río Branco 150 kV',
+    voltage: 150,
+    length_km: 240,
+    operator: 'UTE',
+    crossBorder: false,
+    coords: [
+      [-33.230, -54.380], [-32.780, -54.250], [-32.370, -54.180], [-32.480, -53.750], [-32.590, -53.380]
+    ],
+    coverage: {
+      nominal: { covered: true, gen: '4g', quality: 'LTE in towns' },
+      standard: { covered: true, gen: '2g', quality: '2G Rural' },
+      conservative: { covered: false, gen: 'none', quality: 'Blackspot' }
+    }
+  },
+  {
+    id: 'MAL-ROC-CHUY-150',
+    name: 'Maldonado – Rocha – Chuy 150 kV Atlantic Line',
+    voltage: 150,
+    length_km: 210,
+    operator: 'UTE',
+    crossBorder: false,
+    coords: [
+      [-34.900, -54.950], [-34.650, -54.550], [-34.480, -54.330], [-34.020, -53.850], [-33.690, -53.460]
+    ],
+    coverage: {
+      nominal: { covered: true, gen: '4g', quality: 'Coastal LTE' },
+      standard: { covered: true, gen: '4g', quality: 'LTE Route 9' },
+      conservative: { covered: true, gen: '3g', quality: '3G Signal' }
+    }
+  },
+
+  // 110 kV Regional Lines
+  {
+    id: 'SAL-ART-BU-110',
+    name: 'Salto – Artigas – Bella Unión 110 kV Northern Ring',
+    voltage: 110,
+    length_km: 310,
+    operator: 'UTE',
+    crossBorder: false,
+    coords: [
+      [-31.390, -57.960], [-31.050, -57.250], [-30.680, -56.950], [-30.410, -56.460], [-30.250, -57.080], [-30.270, -57.600]
+    ],
+    coverage: {
+      nominal: { covered: true, gen: '4g', quality: 'LTE Towns' },
+      standard: { covered: true, gen: '2g', quality: '2G Edge' },
+      conservative: { covered: false, gen: 'none', quality: 'Blackspot (Remote North)' }
+    }
+  },
+
+  // Cross-Border Segments (Shown in Grey, excluded from national stats)
+  {
+    id: 'XB-AR-SG-500',
+    name: 'Salto Grande Interconnection to Argentina 500 kV',
+    voltage: 500,
+    length_km: 18,
+    operator: 'CTM Salto Grande',
+    crossBorder: true,
+    coords: [
+      [-31.238, -57.925], [-31.230, -58.010], [-31.220, -58.120]
+    ],
+    coverage: {
+      nominal: { covered: true, gen: '4g', quality: 'AR Roaming' },
+      standard: { covered: true, gen: '4g', quality: 'AR Roaming' },
+      conservative: { covered: true, gen: '4g', quality: 'AR Roaming' }
+    }
+  },
+  {
+    id: 'XB-BR-MEL-500',
+    name: 'Melo – Candiota 500 kV Brazil Interconnection',
+    voltage: 500,
+    length_km: 65,
+    operator: 'UTE / Eletrobras',
+    crossBorder: true,
+    coords: [
+      [-32.368, -54.180], [-32.180, -53.950], [-31.950, -53.820], [-31.650, -53.720]
+    ],
+    coverage: {
+      nominal: { covered: true, gen: '3g', quality: 'BR Border Signal' },
+      standard: { covered: true, gen: '2g', quality: 'Border Roaming' },
+      conservative: { covered: false, gen: 'none', quality: 'Border Remote' }
+    }
+  }
+];
+
+// Representative Cell Tower Clusters across Uruguay
+const cellTowers = [
+  { lat: -34.88, lng: -56.16, carrier: 'Antel', type: '5G/4G', radius: 12000 },
+  { lat: -34.72, lng: -55.85, carrier: 'Movistar', type: '4G', radius: 9000 },
+  { lat: -34.90, lng: -54.95, carrier: 'Claro', type: '4G', radius: 11000 },
+  { lat: -34.34, lng: -56.71, carrier: 'Antel', type: '4G', radius: 14000 },
+  { lat: -34.46, lng: -57.84, carrier: 'Antel', type: '4G', radius: 13000 },
+  { lat: -33.38, lng: -56.52, carrier: 'Movistar', type: '3G/4G', radius: 10000 },
+  { lat: -32.81, lng: -56.52, carrier: 'Antel', type: '4G', radius: 12000 },
+  { lat: -31.71, lng: -55.98, carrier: 'Claro', type: '3G/4G', radius: 10000 },
+  { lat: -30.90, lng: -55.54, carrier: 'Antel', type: '4G', radius: 12000 },
+  { lat: -31.39, lng: -57.96, carrier: 'Antel', type: '4G', radius: 15000 },
+  { lat: -32.32, lng: -58.08, carrier: 'Movistar', type: '4G', radius: 11000 },
+  { lat: -32.37, lng: -54.18, carrier: 'Antel', type: '3G/4G', radius: 9000 },
+  { lat: -34.37, lng: -55.24, carrier: 'Claro', type: '3G', radius: 8000 }
+];
+
+let polylines = [];
+let towerCircles = [];
+
+// 4. Render Transmission Lines
+function renderMap() {
+  // Clear previous layers
+  polylines.forEach(p => map.removeLayer(p));
+  polylines = [];
+  towerCircles.forEach(c => map.removeLayer(c));
+  towerCircles = [];
+
+  let totalKmInside = 0;
+  let coveredKm = 0;
+
+  gridSegments.forEach(seg => {
+    // Voltage Filter
+    if (currentVoltage !== 'all' && seg.voltage.toString() !== currentVoltage) {
+      return;
+    }
+
+    const isInside = !seg.crossBorder;
+    if (isInside) totalKmInside += seg.length_km;
+
+    // Determine coverage under active scenario
+    const cov = seg.coverage[currentScenario];
+    let isCovered = cov.covered;
+    let gen = cov.gen;
+
+    // Carrier filtering simulation
+    if (currentCarrier === 'movistar' && seg.id.includes('ART')) {
+      isCovered = false; gen = 'none';
+    } else if (currentCarrier === 'claro' && (seg.id.includes('MELO-SC') || seg.id.includes('ART'))) {
+      isCovered = false; gen = 'none';
+    }
+
+    // Check generation toggles
+    if (isCovered && gen !== 'none') {
+      if (!activeGens[gen]) {
+        isCovered = false;
+      }
+    }
+
+    if (isInside && isCovered) {
+      coveredKm += seg.length_km;
+    }
+
+    // Determine visual style
+    let lineColor = '#22c55e'; // Green
+    let lineWeight = seg.voltage === 500 ? 5 : (seg.voltage === 150 ? 3.5 : 2.5);
+    let lineDash = null;
+
+    if (seg.crossBorder) {
+      lineColor = '#64748b';
+      lineDash = '6, 6';
+    } else if (!isCovered) {
+      lineColor = '#ef4444'; // Red Blackspot
+    } else if (gen === '2g') {
+      lineColor = '#eab308'; // Amber 2G only
+    }
+
+    const poly = L.polyline(seg.coords, {
+      color: lineColor,
+      weight: lineWeight,
+      dashArray: lineDash,
+      opacity: 0.9,
+      lineCap: 'round'
+    }).addTo(map);
+
+    // Click Popup
+    const badgeClass = seg.voltage === 500 ? 'badge-500' : (seg.voltage === 150 ? 'badge-150' : 'badge-110');
+    const statusColor = seg.crossBorder ? '#94a3b8' : (isCovered ? '#4ade80' : '#f87171');
+    const statusText = seg.crossBorder ? 'Cross-Border Line (AR/BR)' : (isCovered ? `Covered (${gen.toUpperCase()})` : 'Blackspot (No Signal)');
+
+    const popupContent = `
+      <div class="custom-popup">
+        <div class="popup-header">
+          <div class="popup-title">${seg.name}</div>
+          <span class="popup-badge ${badgeClass}">${seg.voltage} kV</span>
+        </div>
+        <div class="popup-row"><span>Status:</span> <b style="color:${statusColor}">${statusText}</b></div>
+        <div class="popup-row"><span>Segment Length:</span> <b>${seg.length_km} km</b></div>
+        <div class="popup-row"><span>Operator:</span> <b>${seg.operator}</b></div>
+        <div class="popup-row"><span>Signal Reception:</span> <b>${cov.quality}</b></div>
+        <div class="popup-row"><span>Scenario:</span> <b style="text-transform:capitalize">${currentScenario}</b></div>
+      </div>
+    `;
+
+    poly.bindPopup(popupContent);
+    polylines.push(poly);
+  });
+
+  // Render Cellular Towers
+  cellTowers.forEach(t => {
+    if (currentCarrier !== 'all' && currentCarrier.toLowerCase() !== t.carrier.toLowerCase()) return;
+    const circle = L.circle([t.lat, t.lng], {
+      color: t.carrier === 'Antel' ? '#3b82f6' : (t.carrier === 'Movistar' ? '#10b981' : '#f43f5e'),
+      fillColor: t.carrier === 'Antel' ? '#3b82f6' : (t.carrier === 'Movistar' ? '#10b981' : '#f43f5e'),
+      fillOpacity: 0.08,
+      radius: t.radius,
+      weight: 1
+    }).addTo(map);
+    towerCircles.push(circle);
+  });
+
+  // Update Statistics HUD
+  updateStatistics(totalKmInside, coveredKm);
+}
+
+// 5. Update Statistics HUD
+function updateStatistics(total, covered) {
+  const percent = total > 0 ? ((covered / total) * 100).toFixed(1) : 0;
+  const blackspotKm = total - covered;
+  const blackspotPct = (100 - percent).toFixed(1);
+
+  document.getElementById('stat-covered').innerText = `${covered.toLocaleString()} km (${percent}%)`;
+  document.getElementById('stat-blackspot').innerText = `${blackspotKm.toLocaleString()} km (${blackspotPct}%)`;
+  document.getElementById('prog-covered').style.width = `${percent}%`;
+  document.getElementById('prog-blackspot').style.width = `${blackspotPct}%`;
+
+  const kpiBadge = document.getElementById('header-kpi-badge');
+  const kpiText = document.getElementById('kpi-text');
+  kpiText.innerText = `Coverage: ${percent}% (${covered.toLocaleString()} km)`;
+
+  if (percent < 85) {
+    kpiBadge.className = 'kpi-badge warning';
+  } else {
+    kpiBadge.className = 'kpi-badge';
+  }
+}
+
+// 6. User Interaction Handlers
+function setScenario(scenario, btn) {
+  currentScenario = scenario;
+  document.querySelectorAll('.seg-btn').forEach(b => {
+    b.className = 'seg-btn';
+  });
+  btn.className = `seg-btn active ${scenario === 'conservative' ? 'conservative' : ''}`;
+  renderMap();
+}
+
+function toggleGen(gen) {
+  activeGens[gen] = !activeGens[gen];
+  const chip = document.getElementById(`chip-${gen}`);
+  if (activeGens[gen]) {
+    chip.classList.add('active');
+  } else {
+    chip.classList.remove('active');
+  }
+  renderMap();
+}
+
+function setCarrier(carrier) {
+  currentCarrier = carrier;
+  renderMap();
+}
+
+function setVoltage(voltage) {
+  currentVoltage = voltage;
+  renderMap();
+}
+
+function switchBasemap(type) {
+  Object.values(basemaps).forEach(layer => map.removeLayer(layer));
+  basemaps[type].addTo(map);
+}
+
+// Initial Run
+renderMap();
+</script>
+</body>
+</html>
