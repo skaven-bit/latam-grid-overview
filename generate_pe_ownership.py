@@ -356,8 +356,9 @@ button.on {{ background:#0f172a; color:#fff; border-color:#0f172a; }}
   <div class="ctl">
     <label class="t">Basemap Style</label>
     <div class="btnrow" id="baseBtns">
-      <button data-b="dark" class="on">Night Mode</button>
+      <button data-b="dark" class="on">Esri Dark</button>
       <button data-b="osm">OpenStreetMap</button>
+      <button data-b="esri">Esri Street</button>
       <button data-b="sat">Esri Satellite</button>
     </div>
   </div>
@@ -406,12 +407,15 @@ var BADGE_COLORS = {{
   60: '#64748b'
 }};
 
-// Basemaps
-var darkMap = L.tileLayer('https://{{s}}.basemaps.cartocdn.com/dark_all/{{z}}/{{x}}/{{y}}{{r}}.png', {{
-  attribution: '&copy; OpenStreetMap &copy; CARTO', maxZoom: 18
+// Basemaps (100% public, no API keys or watermarks required)
+var darkMap = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{{z}}/{{y}}/{{x}}', {{
+  attribution: 'Esri, HERE, Garmin, &copy; OpenStreetMap contributors', maxZoom: 16
 }});
 var osmMap = L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{
   attribution: '&copy; OpenStreetMap contributors', maxZoom: 18
+}});
+var esriMap = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{{z}}/{{y}}/{{x}}', {{
+  attribution: 'Esri, HERE, Garmin', maxZoom: 18
 }});
 var satMap = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{{z}}/{{y}}/{{x}}', {{
   attribution: '&copy; Esri, Earthstar Geographics', maxZoom: 18
@@ -570,8 +574,9 @@ document.getElementById('baseBtns').addEventListener('click', function(e) {{
   var b = e.target.closest('button'); if (!b) return;
   setActive(this, b);
   var key = b.getAttribute('data-b');
-  map.removeLayer(darkMap); map.removeLayer(osmMap); map.removeLayer(satMap);
+  map.removeLayer(darkMap); map.removeLayer(osmMap); map.removeLayer(esriMap); map.removeLayer(satMap);
   if (key === 'osm') osmMap.addTo(map);
+  else if (key === 'esri') esriMap.addTo(map);
   else if (key === 'sat') satMap.addTo(map);
   else darkMap.addTo(map);
 }});
